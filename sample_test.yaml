@@ -1,0 +1,9 @@
+## Comment
+  Database: ## Comment
+    Name: vuz_online ## Comment
+    User: user
+    Password: password!
+
+
+  Logging:
+    Dir: /var/log/my_log
