@@ -1,4 +1,4 @@
-module github.com/GlobchanskyDenis/yaml.git
+module github.com/GlobchanskyDenis/yaml
 
 go 1.19
 
