@@ -1,6 +1,8 @@
 package yaml
 
 import (
+	"os"
+	"strings"
 	"testing"
 )
 
@@ -320,6 +322,546 @@ func TestYamlConfigurator(t *testing.T) {
 		}
 	})
 
+	t.Run("Min tag", func(t *testing.T) {
+		config := NewConfigurator()
+		if err := config.setNewSource([]byte(`
+            Alias:
+                Int64Val: 100500
+                Int64PtrVal: 100500
+                Float64Val: 3.1415
+                Float64PtrVal: 3.1415
+        `)); err != nil {
+			t.Errorf("Error while reading source yaml: %s", err)
+			t.FailNow()
+		}
+
+		/*	Валидный вариант, все должно проходить  */
+		type Dto1Type struct {
+			Int64Val      int64    `conf:"Int64Val" min:"100500"`
+			Int64PtrVal   *int64   `conf:"Int64PtrVal" min:"100500"`
+			Float64Val    float64  `conf:"Float64Val" min:"3.1415"`
+			Float64PtrVal *float64 `conf:"Float64PtrVal" min:"3.1415"`
+		}
+
+		var dto1 Dto1Type
+		if err := config.ParseToStruct(&dto1, "Alias"); err != nil {
+			t.Errorf("Error while filling config: %s", err)
+			t.FailNow()
+		}
+
+		if dto1.Int64Val != 100500 {
+			t.Errorf("Fail: field %s expected %d got %d", "dto.Int64Val", 100500, dto1.Int64Val)
+		}
+		if dto1.Int64PtrVal == nil || *dto1.Int64PtrVal != 100500 {
+			t.Errorf("Fail: field %s expected %d got %#v", "dto.Int64PtrVal", 100500, dto1.Int64PtrVal)
+		}
+		if dto1.Float64Val != 3.1415 {
+			t.Errorf("Fail: field %s expected %f got %f", "dto.Float64Val", 3.1415, dto1.Float64Val)
+		}
+		if dto1.Float64PtrVal == nil || *dto1.Float64PtrVal != 3.1415 {
+			t.Errorf("Fail: field %s expected %f got %#v", "dto.Float64PtrVal", 3.1415, dto1.Float64PtrVal)
+		}
+
+		/*	Вариант когда должна вернуться ошибка так как одно поле #1 меньше допустимого  */
+		type Dto2Type struct {
+			Int64Val      int64    `conf:"Int64Val" min:"100501"`
+			Int64PtrVal   *int64   `conf:"Int64PtrVal" min:"100500"`
+			Float64Val    float64  `conf:"Float64Val" min:"3.1415"`
+			Float64PtrVal *float64 `conf:"Float64PtrVal" min:"3.1415"`
+		}
+
+		var dto2 Dto2Type
+		if err := config.ParseToStruct(&dto2, "Alias"); err == nil {
+			t.Errorf("Fail: no error but it should be")
+			t.FailNow()
+		} else if strings.Contains(err.Error(), " меньше значения ") == false {
+			t.Errorf("Fail: we expected another error %s", err)
+			t.FailNow()
+		}
+
+		/*	Вариант когда должна вернуться ошибка так как поле #2 меньше допустимого  */
+		type Dto3Type struct {
+			Int64Val      int64    `conf:"Int64Val" min:"100500"`
+			Int64PtrVal   *int64   `conf:"Int64PtrVal" min:"100501"`
+			Float64Val    float64  `conf:"Float64Val" min:"3.1415"`
+			Float64PtrVal *float64 `conf:"Float64PtrVal" min:"3.1415"`
+		}
+
+		var dto3 Dto3Type
+		if err := config.ParseToStruct(&dto3, "Alias"); err == nil {
+			t.Errorf("Fail: no error but it should be")
+			t.FailNow()
+		} else if strings.Contains(err.Error(), " меньше значения ") == false {
+			t.Errorf("Fail: we expected another error %s", err)
+			t.FailNow()
+		}
+
+		/*	Вариант когда должна вернуться ошибка так как поле #3 меньше допустимого  */
+		type Dto4Type struct {
+			Int64Val      int64    `conf:"Int64Val" min:"100500"`
+			Int64PtrVal   *int64   `conf:"Int64PtrVal" min:"100500"`
+			Float64Val    float64  `conf:"Float64Val" min:"3.1416"`
+			Float64PtrVal *float64 `conf:"Float64PtrVal" min:"3.1415"`
+		}
+
+		var dto4 Dto4Type
+		if err := config.ParseToStruct(&dto4, "Alias"); err == nil {
+			t.Errorf("Fail: no error but it should be")
+			t.FailNow()
+		} else if strings.Contains(err.Error(), " меньше значения ") == false {
+			t.Errorf("Fail: we expected another error %s", err)
+			t.FailNow()
+		}
+
+		/*	Вариант когда должна вернуться ошибка так как поле #4 меньше допустимого  */
+		type Dto5Type struct {
+			Int64Val      int64    `conf:"Int64Val" min:"100500"`
+			Int64PtrVal   *int64   `conf:"Int64PtrVal" min:"100500"`
+			Float64Val    float64  `conf:"Float64Val" min:"3.1415"`
+			Float64PtrVal *float64 `conf:"Float64PtrVal" min:"3.1416"`
+		}
+
+		var dto5 Dto5Type
+		if err := config.ParseToStruct(&dto5, "Alias"); err == nil {
+			t.Errorf("Fail: no error but it should be")
+			t.FailNow()
+		} else if strings.Contains(err.Error(), " меньше значения ") == false {
+			t.Errorf("Fail: we expected another error %s", err)
+			t.FailNow()
+		}
+	})
+
+	t.Run("Max tag", func(t *testing.T) {
+		config := NewConfigurator()
+		if err := config.setNewSource([]byte(`
+            Alias:
+                Int64Val: 100500
+                Int64PtrVal: 100500
+                Float64Val: 3.1415
+                Float64PtrVal: 3.1415
+        `)); err != nil {
+			t.Errorf("Error while reading source yaml: %s", err)
+			t.FailNow()
+		}
+
+		/*	Валидный вариант, все должно проходить  */
+		type Dto1Type struct {
+			Int64Val      int64    `conf:"Int64Val" max:"100500"`
+			Int64PtrVal   *int64   `conf:"Int64PtrVal" max:"100500"`
+			Float64Val    float64  `conf:"Float64Val" max:"3.1415"`
+			Float64PtrVal *float64 `conf:"Float64PtrVal" max:"3.1415"`
+		}
+
+		var dto1 Dto1Type
+		if err := config.ParseToStruct(&dto1, "Alias"); err != nil {
+			t.Errorf("Error while filling config: %s", err)
+			t.FailNow()
+		}
+
+		if dto1.Int64Val != 100500 {
+			t.Errorf("Fail: field %s expected %d got %d", "dto.Int64Val", 100500, dto1.Int64Val)
+		}
+		if dto1.Int64PtrVal == nil || *dto1.Int64PtrVal != 100500 {
+			t.Errorf("Fail: field %s expected %d got %#v", "dto.Int64PtrVal", 100500, dto1.Int64PtrVal)
+		}
+		if dto1.Float64Val != 3.1415 {
+			t.Errorf("Fail: field %s expected %f got %f", "dto.Float64Val", 3.1415, dto1.Float64Val)
+		}
+		if dto1.Float64PtrVal == nil || *dto1.Float64PtrVal != 3.1415 {
+			t.Errorf("Fail: field %s expected %f got %#v", "dto.Float64PtrVal", 3.1415, dto1.Float64PtrVal)
+		}
+
+		/*	Вариант когда должна вернуться ошибка так как одно поле #1 больше допустимого  */
+		type Dto2Type struct {
+			Int64Val      int64    `conf:"Int64Val" max:"100499"`
+			Int64PtrVal   *int64   `conf:"Int64PtrVal" max:"100500"`
+			Float64Val    float64  `conf:"Float64Val" max:"3.1415"`
+			Float64PtrVal *float64 `conf:"Float64PtrVal" max:"3.1415"`
+		}
+
+		var dto2 Dto2Type
+		if err := config.ParseToStruct(&dto2, "Alias"); err == nil {
+			t.Errorf("Fail: no error but it should be")
+			t.FailNow()
+		} else if strings.Contains(err.Error(), " больше значения ") == false {
+			t.Errorf("Fail: we expected another error %s", err)
+			t.FailNow()
+		}
+
+		/*	Вариант когда должна вернуться ошибка так как поле #2 больше допустимого  */
+		type Dto3Type struct {
+			Int64Val      int64    `conf:"Int64Val" max:"100500"`
+			Int64PtrVal   *int64   `conf:"Int64PtrVal" max:"100499"`
+			Float64Val    float64  `conf:"Float64Val" max:"3.1415"`
+			Float64PtrVal *float64 `conf:"Float64PtrVal" max:"3.1415"`
+		}
+
+		var dto3 Dto3Type
+		if err := config.ParseToStruct(&dto3, "Alias"); err == nil {
+			t.Errorf("Fail: no error but it should be")
+			t.FailNow()
+		} else if strings.Contains(err.Error(), " больше значения ") == false {
+			t.Errorf("Fail: we expected another error %s", err)
+			t.FailNow()
+		}
+
+		/*	Вариант когда должна вернуться ошибка так как поле #3 больше допустимого  */
+		type Dto4Type struct {
+			Int64Val      int64    `conf:"Int64Val" max:"100500"`
+			Int64PtrVal   *int64   `conf:"Int64PtrVal" max:"100500"`
+			Float64Val    float64  `conf:"Float64Val" max:"3.1414"`
+			Float64PtrVal *float64 `conf:"Float64PtrVal" max:"3.1415"`
+		}
+
+		var dto4 Dto4Type
+		if err := config.ParseToStruct(&dto4, "Alias"); err == nil {
+			t.Errorf("Fail: no error but it should be")
+			t.FailNow()
+		} else if strings.Contains(err.Error(), " больше значения ") == false {
+			t.Errorf("Fail: we expected another error %s", err)
+			t.FailNow()
+		}
+
+		/*	Вариант когда должна вернуться ошибка так как поле #4 больше допустимого  */
+		type Dto5Type struct {
+			Int64Val      int64    `conf:"Int64Val" max:"100500"`
+			Int64PtrVal   *int64   `conf:"Int64PtrVal" max:"100500"`
+			Float64Val    float64  `conf:"Float64Val" max:"3.1415"`
+			Float64PtrVal *float64 `conf:"Float64PtrVal" max:"3.1414"`
+		}
+
+		var dto5 Dto5Type
+		if err := config.ParseToStruct(&dto5, "Alias"); err == nil {
+			t.Errorf("Fail: no error but it should be")
+			t.FailNow()
+		} else if strings.Contains(err.Error(), " больше значения ") == false {
+			t.Errorf("Fail: we expected another error %s", err)
+			t.FailNow()
+		}
+	})
+
+	t.Run("enum", func(t *testing.T) {
+		config := NewConfigurator()
+		if err := config.setNewSource([]byte(`
+            Alias:
+                Int64Val: 100500
+                Int64PtrVal: 100500
+                Float64Val: 3.1415
+                Float64PtrVal: 3.1415
+                StringVal: sample
+                StringPtrVal: sample
+        `)); err != nil {
+			t.Errorf("Error while reading source yaml: %s", err)
+			t.FailNow()
+		}
+
+		/*	Валидный вариант, все должно проходить  */
+		t.Run("valid 1 enum", func(t *testing.T) {
+			type DtoType struct {
+				Int64Val      int64    `conf:"Int64Val" enum:"100500"`
+				Int64PtrVal   *int64   `conf:"Int64PtrVal" enum:"100500"`
+				Float64Val    float64  `conf:"Float64Val" enum:"3.1415"`
+				Float64PtrVal *float64 `conf:"Float64PtrVal" enum:"3.1415"`
+				StringVal     string   `conf:"StringVal" enum:"sample"`
+				StringPtrVal  string   `conf:"StringPtrVal" enum:"sample"`
+			}
+
+			var dto DtoType
+			if err := config.ParseToStruct(&dto, "Alias"); err != nil {
+				t.Errorf("Error while filling config: %s", err)
+				t.FailNow()
+			}
+		})
+
+		/*	Валидный вариант, все должно проходить  */
+		t.Run("valid 2 enum", func(t *testing.T) {
+			type DtoType struct {
+				Int64Val      int64    `conf:"Int64Val" enum:"100500;100501"`
+				Int64PtrVal   *int64   `conf:"Int64PtrVal" enum:"100501;100500"`
+				Float64Val    float64  `conf:"Float64Val" enum:"3.1416;3.1415"`
+				Float64PtrVal *float64 `conf:"Float64PtrVal" enum:"3.1415;3.1416"`
+				StringVal     string   `conf:"StringVal" enum:"sample1;sample"`
+				StringPtrVal  string   `conf:"StringPtrVal" enum:"sample;sample1"`
+			}
+
+			var dto DtoType
+			if err := config.ParseToStruct(&dto, "Alias"); err != nil {
+				t.Errorf("Error while filling config: %s", err)
+				t.FailNow()
+			}
+		})
+
+		/*	Валидный вариант, все должно проходить  */
+		t.Run("valid 3 enum", func(t *testing.T) {
+			type DtoType struct {
+				Int64Val      int64    `conf:"Int64Val" enum:"100500;100501;100502"`
+				Int64PtrVal   *int64   `conf:"Int64PtrVal" enum:"100501;100500;100502"`
+				Float64Val    float64  `conf:"Float64Val" enum:"3.1417;3.1416;3.1415"`
+				Float64PtrVal *float64 `conf:"Float64PtrVal" enum:"3.1415;3.1416;3.1417"`
+				StringVal     string   `conf:"StringVal" enum:"sample1;sample;sample2"`
+				StringPtrVal  string   `conf:"StringPtrVal" enum:"sample2;sample1;sample"`
+			}
+
+			var dto DtoType
+			if err := config.ParseToStruct(&dto, "Alias"); err != nil {
+				t.Errorf("Error while filling config: %s", err)
+				t.FailNow()
+			}
+		})
+
+		/*	Вариант когда должна вернуться ошибка так как поле #1 не входит в множество перечисленное в enum  */
+		t.Run("invalid 1 enum field1", func(t *testing.T) {
+			type DtoType struct {
+				Int64Val      int64    `conf:"Int64Val" enum:"100501"`
+				Int64PtrVal   *int64   `conf:"Int64PtrVal" enum:"100500"`
+				Float64Val    float64  `conf:"Float64Val" enum:"3.1415"`
+				Float64PtrVal *float64 `conf:"Float64PtrVal" enum:"3.1415"`
+				StringVal     string   `conf:"StringVal" enum:"sample"`
+				StringPtrVal  string   `conf:"StringPtrVal" enum:"sample"`
+			}
+
+			var dto DtoType
+			if err := config.ParseToStruct(&dto, "Alias"); err == nil {
+				t.Errorf("Fail: no error but it should be")
+				t.FailNow()
+			} else if strings.Contains(err.Error(), "Поле не соответствует ни одному из перечисленный в enum значений") == false {
+				t.Errorf("Fail: we expected another error %s", err)
+				t.FailNow()
+			}
+		})
+
+		/*	Вариант когда должна вернуться ошибка так как поле #2 не входит в множество перечисленное в enum  */
+		t.Run("invalid 1 enum field2", func(t *testing.T) {
+			type DtoType struct {
+				Int64Val      int64    `conf:"Int64Val" enum:"100500"`
+				Int64PtrVal   *int64   `conf:"Int64PtrVal" enum:"100501"`
+				Float64Val    float64  `conf:"Float64Val" enum:"3.1415"`
+				Float64PtrVal *float64 `conf:"Float64PtrVal" enum:"3.1415"`
+				StringVal     string   `conf:"StringVal" enum:"sample"`
+				StringPtrVal  string   `conf:"StringPtrVal" enum:"sample"`
+			}
+
+			var dto DtoType
+			if err := config.ParseToStruct(&dto, "Alias"); err == nil {
+				t.Errorf("Fail: no error but it should be")
+				t.FailNow()
+			} else if strings.Contains(err.Error(), "Поле не соответствует ни одному из перечисленный в enum значений") == false {
+				t.Errorf("Fail: we expected another error %s", err)
+				t.FailNow()
+			}
+		})
+
+		/*	Вариант когда должна вернуться ошибка так как поле #3 не входит в множество перечисленное в enum  */
+		t.Run("invalid 1 enum field3", func(t *testing.T) {
+			type DtoType struct {
+				Int64Val      int64    `conf:"Int64Val" enum:"100500"`
+				Int64PtrVal   *int64   `conf:"Int64PtrVal" enum:"100500"`
+				Float64Val    float64  `conf:"Float64Val" enum:"3.1416"`
+				Float64PtrVal *float64 `conf:"Float64PtrVal" enum:"3.1415"`
+				StringVal     string   `conf:"StringVal" enum:"sample"`
+				StringPtrVal  string   `conf:"StringPtrVal" enum:"sample"`
+			}
+
+			var dto DtoType
+			if err := config.ParseToStruct(&dto, "Alias"); err == nil {
+				t.Errorf("Fail: no error but it should be")
+				t.FailNow()
+			} else if strings.Contains(err.Error(), "Поле не соответствует ни одному из перечисленный в enum значений") == false {
+				t.Errorf("Fail: we expected another error %s", err)
+				t.FailNow()
+			}
+		})
+
+		/*	Вариант когда должна вернуться ошибка так как поле #4 не входит в множество перечисленное в enum  */
+		t.Run("invalid 1 enum field4", func(t *testing.T) {
+			type DtoType struct {
+				Int64Val      int64    `conf:"Int64Val" enum:"100500"`
+				Int64PtrVal   *int64   `conf:"Int64PtrVal" enum:"100500"`
+				Float64Val    float64  `conf:"Float64Val" enum:"3.1415"`
+				Float64PtrVal *float64 `conf:"Float64PtrVal" enum:"3.1416"`
+				StringVal     string   `conf:"StringVal" enum:"sample"`
+				StringPtrVal  string   `conf:"StringPtrVal" enum:"sample"`
+			}
+
+			var dto DtoType
+			if err := config.ParseToStruct(&dto, "Alias"); err == nil {
+				t.Errorf("Fail: no error but it should be")
+				t.FailNow()
+			} else if strings.Contains(err.Error(), "Поле не соответствует ни одному из перечисленный в enum значений") == false {
+				t.Errorf("Fail: we expected another error %s", err)
+				t.FailNow()
+			}
+		})
+
+		/*	Вариант когда должна вернуться ошибка так как поле #5 не входит в множество перечисленное в enum  */
+		t.Run("invalid 1 enum field5", func(t *testing.T) {
+			type DtoType struct {
+				Int64Val      int64    `conf:"Int64Val" enum:"100500"`
+				Int64PtrVal   *int64   `conf:"Int64PtrVal" enum:"100500"`
+				Float64Val    float64  `conf:"Float64Val" enum:"3.1415"`
+				Float64PtrVal *float64 `conf:"Float64PtrVal" enum:"3.1415"`
+				StringVal     string   `conf:"StringVal" enum:"sample1"`
+				StringPtrVal  string   `conf:"StringPtrVal" enum:"sample"`
+			}
+
+			var dto DtoType
+			if err := config.ParseToStruct(&dto, "Alias"); err == nil {
+				t.Errorf("Fail: no error but it should be")
+				t.FailNow()
+			} else if strings.Contains(err.Error(), "Поле не соответствует ни одному из перечисленный в enum значений") == false {
+				t.Errorf("Fail: we expected another error %s", err)
+				t.FailNow()
+			}
+		})
+
+		/*	Вариант когда должна вернуться ошибка так как поле #6 не входит в множество перечисленное в enum  */
+		t.Run("invalid 1 enum field6", func(t *testing.T) {
+			type DtoType struct {
+				Int64Val      int64    `conf:"Int64Val" enum:"100500"`
+				Int64PtrVal   *int64   `conf:"Int64PtrVal" enum:"100500"`
+				Float64Val    float64  `conf:"Float64Val" enum:"3.1415"`
+				Float64PtrVal *float64 `conf:"Float64PtrVal" enum:"3.1415"`
+				StringVal     string   `conf:"StringVal" enum:"sample"`
+				StringPtrVal  string   `conf:"StringPtrVal" enum:"sample1"`
+			}
+
+			var dto DtoType
+			if err := config.ParseToStruct(&dto, "Alias"); err == nil {
+				t.Errorf("Fail: no error but it should be")
+				t.FailNow()
+			} else if strings.Contains(err.Error(), "Поле не соответствует ни одному из перечисленный в enum значений") == false {
+				t.Errorf("Fail: we expected another error %s", err)
+				t.FailNow()
+			}
+		})
+
+		/*	Вариант когда должна вернуться ошибка так как поле #1 не входит в множество перечисленное в enum  */
+		t.Run("invalid 2 enum field1", func(t *testing.T) {
+			type DtoType struct {
+				Int64Val      int64    `conf:"Int64Val" enum:"100501;100502"`
+				Int64PtrVal   *int64   `conf:"Int64PtrVal" enum:"100500;100501"`
+				Float64Val    float64  `conf:"Float64Val" enum:"3.1415;3.1416"`
+				Float64PtrVal *float64 `conf:"Float64PtrVal" enum:"3.1415;3.1416"`
+				StringVal     string   `conf:"StringVal" enum:"sample;sample1"`
+				StringPtrVal  string   `conf:"StringPtrVal" enum:"sample;sample1"`
+			}
+
+			var dto DtoType
+			if err := config.ParseToStruct(&dto, "Alias"); err == nil {
+				t.Errorf("Fail: no error but it should be")
+				t.FailNow()
+			} else if strings.Contains(err.Error(), "Поле не соответствует ни одному из перечисленный в enum значений") == false {
+				t.Errorf("Fail: we expected another error %s", err)
+				t.FailNow()
+			}
+		})
+
+		/*	Вариант когда должна вернуться ошибка так как поле #2 не входит в множество перечисленное в enum  */
+		t.Run("invalid 2 enum field2", func(t *testing.T) {
+			type DtoType struct {
+				Int64Val      int64    `conf:"Int64Val" enum:"100501;100500"`
+				Int64PtrVal   *int64   `conf:"Int64PtrVal" enum:"100501;100502"`
+				Float64Val    float64  `conf:"Float64Val" enum:"3.1415;3.1416"`
+				Float64PtrVal *float64 `conf:"Float64PtrVal" enum:"3.1415;3.1416"`
+				StringVal     string   `conf:"StringVal" enum:"sample;sample1"`
+				StringPtrVal  string   `conf:"StringPtrVal" enum:"sample;sample1"`
+			}
+
+			var dto DtoType
+			if err := config.ParseToStruct(&dto, "Alias"); err == nil {
+				t.Errorf("Fail: no error but it should be")
+				t.FailNow()
+			} else if strings.Contains(err.Error(), "Поле не соответствует ни одному из перечисленный в enum значений") == false {
+				t.Errorf("Fail: we expected another error %s", err)
+				t.FailNow()
+			}
+		})
+
+		/*	Вариант когда должна вернуться ошибка так как поле #3 не входит в множество перечисленное в enum  */
+		t.Run("invalid 2 enum field3", func(t *testing.T) {
+			type DtoType struct {
+				Int64Val      int64    `conf:"Int64Val" enum:"100501;100500"`
+				Int64PtrVal   *int64   `conf:"Int64PtrVal" enum:"100501;100500"`
+				Float64Val    float64  `conf:"Float64Val" enum:"3.1417;3.1416"`
+				Float64PtrVal *float64 `conf:"Float64PtrVal" enum:"3.1415;3.1416"`
+				StringVal     string   `conf:"StringVal" enum:"sample;sample1"`
+				StringPtrVal  string   `conf:"StringPtrVal" enum:"sample;sample1"`
+			}
+
+			var dto DtoType
+			if err := config.ParseToStruct(&dto, "Alias"); err == nil {
+				t.Errorf("Fail: no error but it should be")
+				t.FailNow()
+			} else if strings.Contains(err.Error(), "Поле не соответствует ни одному из перечисленный в enum значений") == false {
+				t.Errorf("Fail: we expected another error %s", err)
+				t.FailNow()
+			}
+		})
+
+		/*	Вариант когда должна вернуться ошибка так как поле #4 не входит в множество перечисленное в enum  */
+		t.Run("invalid 2 enum field4", func(t *testing.T) {
+			type DtoType struct {
+				Int64Val      int64    `conf:"Int64Val" enum:"100501;100500"`
+				Int64PtrVal   *int64   `conf:"Int64PtrVal" enum:"100501;100500"`
+				Float64Val    float64  `conf:"Float64Val" enum:"3.1416;3.1415"`
+				Float64PtrVal *float64 `conf:"Float64PtrVal" enum:"3.1416;3.1417"`
+				StringVal     string   `conf:"StringVal" enum:"sample;sample1"`
+				StringPtrVal  string   `conf:"StringPtrVal" enum:"sample;sample1"`
+			}
+
+			var dto DtoType
+			if err := config.ParseToStruct(&dto, "Alias"); err == nil {
+				t.Errorf("Fail: no error but it should be")
+				t.FailNow()
+			} else if strings.Contains(err.Error(), "Поле не соответствует ни одному из перечисленный в enum значений") == false {
+				t.Errorf("Fail: we expected another error %s", err)
+				t.FailNow()
+			}
+		})
+
+		/*	Вариант когда должна вернуться ошибка так как поле #5 не входит в множество перечисленное в enum  */
+		t.Run("invalid 2 enum field5", func(t *testing.T) {
+			type DtoType struct {
+				Int64Val      int64    `conf:"Int64Val" enum:"100501;100500"`
+				Int64PtrVal   *int64   `conf:"Int64PtrVal" enum:"100501;100500"`
+				Float64Val    float64  `conf:"Float64Val" enum:"3.1416;3.1415"`
+				Float64PtrVal *float64 `conf:"Float64PtrVal" enum:"3.1416;3.1415"`
+				StringVal     string   `conf:"StringVal" enum:"sample1;sample2"`
+				StringPtrVal  string   `conf:"StringPtrVal" enum:"sample;sample1"`
+			}
+
+			var dto DtoType
+			if err := config.ParseToStruct(&dto, "Alias"); err == nil {
+				t.Errorf("Fail: no error but it should be")
+				t.FailNow()
+			} else if strings.Contains(err.Error(), "Поле не соответствует ни одному из перечисленный в enum значений") == false {
+				t.Errorf("Fail: we expected another error %s", err)
+				t.FailNow()
+			}
+		})
+
+		/*	Вариант когда должна вернуться ошибка так как поле #6 не входит в множество перечисленное в enum  */
+		t.Run("invalid 2 enum field6", func(t *testing.T) {
+			type DtoType struct {
+				Int64Val      int64    `conf:"Int64Val" enum:"100501;100500"`
+				Int64PtrVal   *int64   `conf:"Int64PtrVal" enum:"100501;100500"`
+				Float64Val    float64  `conf:"Float64Val" enum:"3.1416;3.1415"`
+				Float64PtrVal *float64 `conf:"Float64PtrVal" enum:"3.1416;3.1415"`
+				StringVal     string   `conf:"StringVal" enum:"sample1;sample"`
+				StringPtrVal  string   `conf:"StringPtrVal" enum:"sample1;sample2"`
+			}
+
+			var dto DtoType
+			if err := config.ParseToStruct(&dto, "Alias"); err == nil {
+				t.Errorf("Fail: no error but it should be")
+				t.FailNow()
+			} else if strings.Contains(err.Error(), "Поле не соответствует ни одному из перечисленный в enum значений") == false {
+				t.Errorf("Fail: we expected another error %s", err)
+				t.FailNow()
+			}
+		})
+	})
+
 	t.Run("InternalSlice", func(t *testing.T) {
 		config := NewConfigurator()
 		if err := config.setNewSource([]byte(`
@@ -432,6 +974,213 @@ func TestYamlConfigurator(t *testing.T) {
 		}
 		if dto.ValWithoutTag != 21 {
 			t.Errorf("Fail: field %s expected %d got %d", "dto.ValWithoutTag", 21, dto.ValWithoutTag)
+		}
+	})
+
+	t.Run("Environment", func(t *testing.T) {
+		newEnv := "qwerty_123"
+		os.Setenv("temp_env", newEnv)
+		config := NewConfigurator()
+		if err := config.setNewSource([]byte(`
+            BlockAlias:
+                Env: temp_env
+        `)); err != nil {
+			t.Errorf("Error while reading source yaml: %s", err)
+			t.FailNow()
+		}
+		type BlockAliasType struct {
+			Env string `conf:"Env" env:"true"`
+		}
+		var dto BlockAliasType
+		if err := config.ParseToStruct(&dto, "BlockAlias"); err != nil {
+			t.Errorf("Error while filling config: %s", err)
+			t.FailNow()
+		}
+		if dto.Env != newEnv {
+			t.Errorf("Fail: env missmatch expected %s got %s", newEnv, dto.Env)
+			t.FailNow()
+		}
+	})
+
+	t.Run("subSlice", func(t *testing.T) {
+		config := NewConfigurator()
+		if err := config.setNewSource([]byte(`
+            Alias:
+                SliceInt:
+                - 1
+                - 2
+                - 3
+                SliceUint:
+                - 1
+                - 2
+                - 3
+                SliceString:
+                - 11
+                - qwerty
+                - true
+        `)); err != nil {
+			t.Errorf("Error while reading source yaml: %s", err)
+			t.FailNow()
+		}
+		/*	Данное поле (SliceNotExist) не должно существовать в yaml файле  */
+		type DtoType struct {
+			SliceInt    []int64  `conf:"SliceInt"`
+			SliceUint   []uint   `conf:"SliceUint"`
+			SliceString []string `conf:"SliceString"`
+		}
+		var dto DtoType
+		if err := config.ParseToStruct(&dto, "Alias"); err != nil {
+			t.Errorf("Error: %s", err)
+			t.FailNow()
+		}
+
+		if len(dto.SliceInt) != 3 {
+			t.Errorf("Fail: SliceInt len %d expected %d", len(dto.SliceInt), 3)
+		} else {
+			if dto.SliceInt[0] != 1 {
+				t.Errorf("Fail: SliceInt[0] got %d expected %d", dto.SliceInt[0], 1)
+			}
+			if dto.SliceInt[1] != 2 {
+				t.Errorf("Fail: SliceInt[1] got %d expected %d", dto.SliceInt[1], 2)
+			}
+			if dto.SliceInt[2] != 3 {
+				t.Errorf("Fail: SliceInt[2] got %d expected %d", dto.SliceInt[2], 3)
+			}
+		}
+
+		if len(dto.SliceUint) != 3 {
+			t.Errorf("Fail: SliceUint len %d expected %d", len(dto.SliceUint), 3)
+		} else {
+			if dto.SliceUint[0] != 1 {
+				t.Errorf("Fail: SliceUint[0] got %d expected %d", dto.SliceUint[0], 1)
+			}
+			if dto.SliceUint[1] != 2 {
+				t.Errorf("Fail: SliceUint[1] got %d expected %d", dto.SliceUint[1], 2)
+			}
+			if dto.SliceUint[2] != 3 {
+				t.Errorf("Fail: SliceUint[2] got %d expected %d", dto.SliceUint[2], 3)
+			}
+		}
+
+		if len(dto.SliceString) != 3 {
+			t.Errorf("Fail: SliceString len %d expected %d", len(dto.SliceString), 3)
+		} else {
+			if dto.SliceString[0] != "11" {
+				t.Errorf("Fail: SliceString[0] got %s expected %s", dto.SliceString[0], "11")
+			}
+			if dto.SliceString[1] != "qwerty" {
+				t.Errorf("Fail: SliceString[1] got %s expected %s", dto.SliceString[1], "qwerty")
+			}
+			if dto.SliceString[2] != "true" {
+				t.Errorf("Fail: SliceString[2] got %s expected %s", dto.SliceString[2], "true")
+			}
+		}
+	})
+
+	t.Run("subStruct", func(t *testing.T) {
+		config := NewConfigurator()
+		if err := config.setNewSource([]byte(`
+            Alias:
+                Value1: 1
+                Struct:
+                    Field: qwerty
+                StructPtr:
+                    Field: qwerty
+                StructWithPtr:
+                    Field: qwerty
+                Value2: asdf
+        `)); err != nil {
+			t.Errorf("Error while reading source yaml: %s", err)
+			t.FailNow()
+		}
+
+		type structType struct {
+			Field string `conf:"Field"`
+		}
+
+		type structWithPtrType struct {
+			Field *string `conf:"Field"`
+		}
+
+		type DtoType struct {
+			Value1        int64             `conf:"Value1"`
+			Struct        structType        `conf:"Struct"`
+			StructPtr     *structType       `conf:"StructPtr"`
+			StructWithPtr structWithPtrType `conf:"StructWithPtr"`
+			Value2        string            `conf:"Value2"`
+		}
+
+		var dto DtoType
+		if err := config.ParseToStruct(&dto, "Alias"); err != nil {
+			t.Errorf("Error: %s", err)
+			t.FailNow()
+		}
+
+		if dto.Value1 != 1 {
+			t.Errorf("Fail: Value1 got %d expected %d", dto.Value1, 1)
+		}
+		if dto.Value2 != "asdf" {
+			t.Errorf("Fail: Value2 got %s expected %s", dto.Value2, "asdf")
+		}
+		if dto.Struct.Field != "qwerty" {
+			t.Errorf("Fail: Struct.Field got %s expected %s", dto.Struct.Field, "qwerty")
+		}
+
+		if dto.StructPtr == nil {
+			t.Errorf("Fail: StructPtr is nil")
+		} else if dto.StructPtr.Field != "qwerty" {
+			t.Errorf("Fail: StructPtr.Field got %s expected %s", dto.StructPtr.Field, "qwerty")
+		}
+
+		if dto.StructWithPtr.Field == nil {
+			t.Errorf("Fail: StructWithPtr.Field is nil")
+		} else if *dto.StructWithPtr.Field != "qwerty" {
+			t.Errorf("Fail: StructWithPtr.Field got %s expected %s", *dto.StructWithPtr.Field, "qwerty")
+		}
+	})
+
+	t.Run("subMap", func(t *testing.T) {
+		config := NewConfigurator()
+		if err := config.setNewSource([]byte(`
+            Alias:
+                Map:
+                   Field1: qwerty
+                   Field2: 42
+        `)); err != nil {
+			t.Errorf("Error while reading source yaml: %s", err)
+			t.FailNow()
+		}
+
+		type DtoType struct {
+			Map map[string]string `conf:"Map"`
+		}
+
+		var dto DtoType
+		if err := config.ParseToStruct(&dto, "Alias"); err != nil {
+			t.Errorf("Error: %s", err)
+			t.FailNow()
+		}
+
+		if len(dto.Map) != 2 {
+			t.Errorf("Fail: Map len %d expected %d", len(dto.Map), 2)
+		} else {
+			field1, exist := dto.Map["Field1"]
+			if exist == false {
+				t.Errorf("Fail: Map.Field1 not exist")
+			} else {
+				if field1 != "qwerty" {
+					t.Errorf("Fail: Field1 got %s expected %s", field1, "qwerty")
+				}
+			}
+
+			field2, exist := dto.Map["Field2"]
+			if exist == false {
+				t.Errorf("Fail: Map.Field2 not exist")
+			} else {
+				if field2 != "42" {
+					t.Errorf("Fail: Field2 got %s expected %s", field2, "42")
+				}
+			}
 		}
 	})
 }
