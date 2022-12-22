@@ -4,6 +4,7 @@ import (
 	"os"
 	"strings"
 	"testing"
+	"time"
 )
 
 func TestYamlConfigurator(t *testing.T) {
@@ -1181,6 +1182,33 @@ func TestYamlConfigurator(t *testing.T) {
 					t.Errorf("Fail: Field2 got %s expected %s", field2, "42")
 				}
 			}
+		}
+	})
+
+	t.Run("Duration", func(t *testing.T) {
+		config := NewConfigurator()
+		if err := config.setNewSource([]byte(`
+            Alias:
+                Duration: 42s
+                DurationPtr: 21s
+        `)); err != nil {
+			t.Errorf("Error while reading source yaml: %s", err)
+			t.FailNow()
+		}
+		type DtoType struct {
+			Duration    time.Duration  `conf:"Duration"`
+			DurationPtr *time.Duration `conf:"DurationPtr"`
+		}
+		var dto DtoType
+		if err := config.ParseToStruct(&dto, "Alias"); err != nil {
+			t.Errorf("Error while filling config: %s", err)
+			t.FailNow()
+		}
+		if (dto.Duration.Milliseconds() / 1000) != 42 {
+			t.Errorf("Fail: Duration expected %d got: %d", 42, dto.Duration.Milliseconds()/1000)
+		}
+		if (dto.DurationPtr.Milliseconds() / 1000) != 21 {
+			t.Errorf("Fail: DurationPtr expected %d got: %d", 21, dto.Duration.Milliseconds()/1000)
 		}
 	})
 }

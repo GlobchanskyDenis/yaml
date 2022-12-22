@@ -517,7 +517,7 @@ func (this *Configurator) checkMaxFieldValue(ftype reflect.Type, field reflect.V
 	return nil
 }
 
-// Получение значений для простых типов
+/*	Получение значений для простых типов  */
 func (this *Configurator) primitiveType(ftype reflect.Type, value interface{}, tag reflect.StructTag) (reflect.Value, error) {
 	switch ftype.Kind() {
 	case reflect.String:
@@ -588,11 +588,21 @@ func (this *Configurator) primitiveType(ftype reflect.Type, value interface{}, t
 	case reflect.Int64:
 		switch typedValue := value.(type) {
 		case string:
-			int64Val, err := strconv.ParseInt(typedValue, 10, 64)
-			if err != nil {
-				return reflect.ValueOf(int64(0)), typeError(ftype, fmt.Sprintf("%T", value), this.lastAliasName)
+			/*	time.Duration по сути является типом int64.
+			**	парсим длительность проверив тип вот таким костыльным образом */
+			if ftype.String() == "time.Duration" {
+				dur, err := time.ParseDuration(typedValue)
+				if err != nil {
+					return reflect.ValueOf(int(0)), typeError(ftype, fmt.Sprintf("%T", value), this.lastAliasName)
+				}
+				return reflect.ValueOf(dur), nil
+			} else {
+				int64Val, err := strconv.ParseInt(typedValue, 10, 64)
+				if err != nil {
+					return reflect.ValueOf(int64(0)), typeError(ftype, fmt.Sprintf("%T", value), this.lastAliasName)
+				}
+				return reflect.ValueOf(int64(int64Val)), nil
 			}
-			return reflect.ValueOf(int64(int64Val)), nil
 		case int:
 			return reflect.ValueOf(int64(typedValue)), nil
 		default:
@@ -652,24 +662,6 @@ func (this *Configurator) primitiveType(ftype reflect.Type, value interface{}, t
 		}
 	default:
 		return reflect.Value{}, typeError(ftype, fmt.Sprintf("%T", value), this.lastAliasName)
-	}
-}
-
-// Возможность в конфиге задавать время в разных единицах.
-func multiplyDuration(duration time.Duration, multiplier string) time.Duration {
-	switch multiplier {
-	case "Microsecond":
-		return duration * time.Microsecond
-	case "Millisecond":
-		return duration * time.Millisecond
-	case "Second":
-		return duration * time.Second
-	case "Minute":
-		return duration * time.Minute
-	case "Hour":
-		return duration * time.Hour
-	default:
-		return duration
 	}
 }
 
